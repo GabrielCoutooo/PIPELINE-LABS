@@ -43,3 +43,4 @@ jobs:
                 echo "2. context: Acessa informações do workflow, job e steps"
                 echo ""
                 echo "Total de elementos de variáveis e contexto: 2"
+                echo ""
