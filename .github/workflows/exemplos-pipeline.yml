@@ -1,0 +1,153 @@
+# Este arquivo e um workflow do GitHub Actions.
+# Workflow e o nome dado a uma automacao executada pelo GitHub.
+# Ele e composto por duas partes principais:
+# - eventos, que dizem quando a automacao deve comecar;
+# - jobs, que dizem quais tarefas devem ser executadas.
+#
+# Linhas iniciadas com # sao comentarios. O GitHub ignora essas linhas;
+# elas existem apenas para explicar o arquivo para quem esta estudando.
+
+# name identifica o workflow na aba "Actions" do repositorio.
+# O nome e livre: escolha algo que ajude a reconhecer a finalidade dele.
+name: "Caderno de eventos"
+
+# on define os eventos que podem iniciar este workflow.
+# Um mesmo workflow pode escutar varios eventos ao mesmo tempo.
+on:
+    # push acontece quando um commit e enviado para o repositorio.
+    push:
+        # branches limita o evento a determinadas branches.
+        # Neste exemplo, o push precisa acontecer em main, develop ou em
+        # qualquer branch cujo nome comece com feature/.
+        branches:
+            - main
+            - develop
+            - "feature/**"
+
+        # paths limita o evento aos arquivos alterados.
+        # src/** inclui qualquer arquivo dentro da pasta src.
+        # O prefixo ! exclui src/tests/** desse filtro.
+        # Como existe uma regra positiva (src/**), a regra negativa funciona.
+        paths:
+            - "src/**"
+            - "!src/tests/**"
+
+    # pull_request acontece quando um pull request passa por uma das acoes
+    # especificadas em types, desde que tenha como destino a branch main.
+    pull_request:
+        # opened: pull request criado.
+        # synchronize: novos commits enviados para o pull request.
+        # closed: pull request fechado, tenha sido aceito ou nao.
+        types: [opened, synchronize, closed]
+        # O pull request precisa apontar para a branch main.
+        branches: [main]
+        # O evento nao acontece se a alteracao for somente em docs ou Markdown.
+        # O * significa qualquer nome de arquivo com a extensao .md.
+        paths-ignore:
+            - "docs/**"
+            - "*.md"
+
+    # schedule executa o workflow automaticamente em horarios definidos.
+    # Os horarios do GitHub Actions usam UTC, nao necessariamente o horario local.
+    schedule:
+        # cron possui cinco campos, nesta ordem:
+        # minuto hora dia-do-mes mes dia-da-semana.
+        # 0 2 * * 1-5 = 02:00 UTC de segunda a sexta.
+        - cron: "0 2 * * 1-5"
+        # 0 0 * * 0 = meia-noite UTC aos domingos.
+        - cron: "0 0 * * 0"
+
+    # workflow_dispatch permite iniciar manualmente pelo botao
+    # "Run workflow" na aba Actions do GitHub.
+    workflow_dispatch:
+        # inputs sao valores que a pessoa pode preencher antes de iniciar
+        # uma execucao manual.
+        # inputs agrupa os campos exibidos no formulario de execucao manual.
+        inputs:
+            # environment e o nome do primeiro campo do formulario.
+            environment:
+                # description explica para a pessoa o que deve ser escolhido.
+                description: 'Environment to deploy'
+                # true torna este campo obrigatorio para iniciar o workflow.
+                required: true
+                # default e a opcao selecionada inicialmente.
+                default: 'staging'
+                # choice transforma o campo em uma lista de opcoes.
+                type: choice
+                # options define os valores permitidos na lista.
+                options:
+                    # Ambiente normalmente usado para testes e validacoes.
+                    - staging
+                    # Ambiente real de producao. Use com cuidado.
+                    - production
+            # version e o nome do segundo campo do formulario.
+            version:
+                # description informa que este campo recebe o numero da versao.
+                description: 'Version number'
+                # false permite iniciar sem informar uma versao.
+                required: false
+                # string indica que o valor sera tratado como texto.
+                type: string
+
+    # issues reage a acontecimentos relacionados a issues do repositorio.
+    issues:
+        # Este exemplo reage apenas quando uma issue e criada, reaberta, rotulada ou fechada.
+        types: [opened, reopened,labeled,closed]
+
+# jobs contem as tarefas executadas pelo workflow.
+# Cada chave abaixo e o identificador de um job; esses nomes devem ser unicos.
+jobs:
+    # Este job nao possui if, entao executa em qualquer evento que iniciar o workflow.
+    evento-recebido:
+        # runs-on escolhe o computador virtual usado para executar o job.
+        # ubuntu-latest usa a versao Ubuntu atualmente recomendada pelo GitHub.
+        runs-on: ubuntu-latest
+        # steps e uma lista de passos executados em ordem.
+        steps:
+            # name e um nome legivel para o passo exibido nos logs.
+            - name: Mostrar evento
+              # run executa um comando no terminal do computador virtual.
+              # github.event_name e uma expressao do GitHub Actions que informa
+              # qual evento iniciou a execucao, como push ou schedule.
+              run: 'echo "Evento recebido: ${{ github.event_name }}"'
+
+    # Este job demonstra como executar algo apenas depois de um push.
+    exemplo-push:
+        # if e uma condicao. O job so sera executado quando ela for verdadeira.
+        # github.event_name == 'push' compara o evento atual com o texto push.
+        if: github.event_name == 'push'
+        runs-on: ubuntu-latest
+        steps:
+            # Um step pode ter somente run quando nao precisa de um nome especial.
+            - run: echo "Este job foi executado por um push."
+
+    # Este job so e executado para o evento pull_request.
+    exemplo-pull-request:
+        if: github.event_name == 'pull_request'
+        runs-on: ubuntu-latest
+        steps:
+            - run: echo "Este job foi executado por um pull request."
+
+    # Este job so e executado quando o horario de um cronograma chega.
+    exemplo-schedule:
+        if: github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        steps:
+            - run: echo "Este job foi executado pelo agendamento."
+
+    # Este job so e executado quando alguem inicia o workflow manualmente.
+    exemplo-manual:
+        if: github.event_name == 'workflow_dispatch'
+        runs-on: ubuntu-latest
+        steps:
+            # inputs.environment acessa o ambiente escolhido no formulario.
+            # inputs.version acessa a versao digitada pela pessoa.
+            # As expressoes sao substituidas pelos valores antes do comando ser executado.
+            - run: 'echo "Ambiente: ${{ inputs.environment }}; Versao: ${{ inputs.version }}"'
+
+    # Este job so e executado quando uma issue e aberta ou reaberta.
+    exemplo-issue:
+        if: github.event_name == 'issues'
+        runs-on: ubuntu-latest
+        steps:
+            - run: echo "Este job foi executado por uma issue."
